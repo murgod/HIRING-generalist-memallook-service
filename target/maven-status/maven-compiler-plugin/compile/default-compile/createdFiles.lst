@@ -1,0 +1,7 @@
+com/murgod/memalloc/controller/AllocRequest.class
+com/murgod/memalloc/controller/DeallocRequest.class
+com/murgod/memalloc/controller/MemController.class
+com/murgod/memalloc/controller/NewRequest.class
+com/murgod/memalloc/MemAllocatorApplication.class
+com/murgod/memalloc/controller/MemoryInfo.class
+com/murgod/memalloc/controller/statusResponse.class
