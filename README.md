@@ -46,180 +46,111 @@ allocated for each.
 The `RESET` command clears any maintained state (i.e. clears the heap) and starts over, causing the
 service to expect a `NEW` command again.
 
-## Examples
-Note each command run below against the service is shown as _OPERATION parameters_
-as opposed to HTTP requests and responses.
+# **Design Considerations**
+1. Byte buffer of Size P*N is allocated with NEW operation.
+2. Memory of M bytes can be allocated in Byte buffer with ALLOC operaton and returns TAG. (TAG: BLOCK-X)
+   - Memory allocation follows 4 byte boundary i.e To Allocation of 1 byte results into allocation of 4 bytes. (1 byte + 3 bytes Padding).
+   - Every allocation preceeds with 4 byte Header. Header 1st byte is type of block 'A'- Allocated, 'D' - Deallocated, 'F' - Free. 2nd byte of the header is 'R'-Reserved. 3rd and 4th byte is size of the block   
+3. Deallocation is performed with DEALLOC operation with TAG. TAG is pointer pointing to memory block in Byte Buffer. Dealloc operation designed to realign contiguous DE-ALLOCATED blocks.
+4. DEALLOC operation should Coalesce the blocks in both direction (DE-FRAGMENTATION)
+5. SHOW operation returns current state of Byte buffer.
+6. RESET operation resets Byte buffer and any allocations if present.
+7. DEFRAG is performed along with DEALLOC operation.
+
+
+![](doc/bufferStructure.PNG)
+![](doc/operations.PNG)
+
+# **Framework and Technologies used**
+
+1. RESTful services are developed in Spring a Java based web framework.
+2. Maven package manager is used to build jar file and manage dependency. 
+3. For packaging JAR is chosen over to WAR to avoid dependency on web server. WAR is industry standard to deploy web applications.
+4. POSTMAN or Curl can be used to test the REST endpoints. The endpoint details are given in following sections.
+
+
+# **HOW TO RUN**
+**To build:**
+
+mvn clean;mavn install
+
+**To run**
+
+java -jar target/Memallocator-0.0.1-SNAPSHOT.jar
+
+
+# **Operations**
+The service supports a set of operations discussed below.
+
+# **NEW**
+```
+curl --location --request POST 'localhost:8080/memalloc/new' --header 'Content-Type: application/json' --data-raw '{ "pageSize" : 1, "noOfPages" : 64 }'
+
+Note: 
+P = pageSize
+N = noOfPages
+```
+```
+Buffer of Size 64 Bytes created
+```
+# **ALLOC**
 
 ```
-NEW with p=16, N=64
+curl --location --request POST 'localhost:8080/alloc' --header 'Content-Type: application/json' --data-raw '{ "mbytes" : 10 }'
 
-// ok, buffer of size 1024 bytes created
+Note:
+M = mbytes
 ```
 
-Now allocate 16 bytes:
 ```
-ALLOC 16
-Return: success, tag 1
-// ok, tag = "1"
+BLOCK-2
 ```
 
-Allocate 2K more (expected to fail since our total heap is only 1K):
-```
-ALLOC 2048
-Return: error, allocation failed
-// allocation failed
-```
+# **DEALLOC**
 
-Now let's see what the heap looks like:
 ```
-SHOW
-1...............
-................
-................
-................
-
-<Allocations by tag>
-1: 16 bytes
+curl --location --request POST 'localhost:8080/memalloc/dealloc' --header 'Content-Type: application/json' --data-raw '{ "tag" : "BLOCK-2"}'
 ```
-Notice that tag `1` is shown indicating that a page was allocated for it.
-
-Let's allocate `32` more bytes:
 ```
-ALLOC 32
-Return: success, tag 2
-// ok, tag = "2"
+SUCCESS: Memory block deallocated successfull
+```
+# **SHOW**
+```
+curl --location --request GET 'localhost:8080/memalloc/show' 
 ```
 
-Check:
 ```
-SHOW
-122.............
-................
-................
-................
-
-<Allocations by tag>
-1: 16 bytes
-2: 32 bytes
-```
-
-Now let's deallocate the first allocation using its tag `1`:
-```
-DEALLOC tag=1
-Return: Success
-// deallocation succeeded
+{
+"totalMemory":64,
+"availableMemory":44,
+"freeMemory":44,
+"defaultHdrBlock":4,
+"allocatedMemory":12,
+"allocateHdrBlocks":4,
+"deallocatedMemory":0,
+"deallocatedHdrBlocks":0,
+"buffer":"AR\u0000\u0003xxxxxxxxxxxxFR\u0000\u000Bffffffffffffffffffffffffffffffffffffffffffff"
+}
 ```
 
-Now deallocate an unknown tag:
+# **RESET**
 ```
-DEALLOC tag=99
-Return: Failed, unknown tag
-// deallocation failed, unknown tag
-```
-
-Check:
-```
-SHOW
-.22.............
-................
-................
-................
-
-<Allocations by tag>
-2: 32 bytes
-```
-
-## NOTES
-* Display matrix sizing can be chosen arbitrarily and does not need to match
-  the example above
-* The tag uses strings "1", "2", etc. This is also only a suggestion
-
-
-# Stretch Addon 1
-
-> NOTE: This is purely optional and will not affect scoring or the interview
-> evaluation process. We understand many candidates have existing jobs
-> demanding their attention.
-
-If you reach this stage, consider adding support for a command `DEFRAG` that
-will perform defragmentation of the memory buffer if possible.
-
-## Example
-Continuing the above example:
+curl --location --request POST 'localhost:8080/memalloc/reset' 
 
 ```
 
-SHOW
-.22.............
-................
-................
-................
-
-<Allocations by tag>
-2: 32 bytes
-
-DEFRAG
-Return: Success
-
-
-SHOW
-22..............
-................
-................
-................
-
-<Allocations by tag>
-2: 32 bytes
-
+```
+RESET successful
 ```
 
-# Submission
+# **DEFRAG**
+```
+ curl --location --request POST 'localhost:8080/memalloc/defrag'
+ ```
+ 
+ ```
+ DEFRAG successful
+ ```
+ 
+ 
 
-You are to build a service that responds over HTTP. Unless you have been instructed otherwise, you may use
-any of the following languages/stacks:
-
-* Golang
-* Java
-* Python 2/3
-* Node.js
-
-If you have a different one you prefer, please contact your interviewer.
-
-## DOs
-* Fork this repo to your own user space, and add @scorpiodawg, @trevorhalvorson, @grimkey
-  as outside collaborators. If you prefer to keep your work private, you may
-  [duplicate](https://help.github.com/en/articles/duplicating-a-repository)
-  it instead.
-* Push all changes to the `master` branch of your fork, and let us know when you're ready
-  to officially submit. We will fork your repo and review your code. Changes made after that
-  will likely be ignored, so please do submit only after you are ready
-* Do ensure your final submission includes everything so that the project can be
-  **built, deployed, runnable and accessible locally**.
-* Do write self-documenting code
-* Do include a `SOLUTION.md` with the following:
-  * what major design decisions did you have to make
-  * why did you choose any frameworks or libraries used
-  * a references section listing any _significant_ resources used during development
-    (significant StackOverflow questions, articles, books, etc. You do not need to
-    include links to questions about language syntax, for e.g.)
-* Do implement your solution as though you intend to productionize it eventually
-
-## DONTs
-- Don't jump right in if you have any doubts as to whether your choice of language/
-  framework might not be suitable for our review (e.g. less common ones such as
-  Clojure, Fortran, Elixir, etc.). Please contact us ahead of time to clarify.
-
-## Timing
-We expect this project to take approximately 2-6 hours of your time. However,
-everyone is different so please treat these numbers as suggestions. If you find
-yourself blocked, or stuck spending inordinate amounts of time in a specific area,
-it might be best to reach out to us -- we want to be respectful of your time and
-it is our job to ensure you have a pleasant experience.
-
-## Feedback
-
-We are always looking for feedback on the question itself. If, after reading through the
-problem, you have questions on its clarity or suggestions on how to improve it, we're all
-ears! You may leave a file named `FEEDBACK.md` when you submit your code.
-
-**We look forward to seeing your work!**
