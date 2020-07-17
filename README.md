@@ -11,6 +11,9 @@
 6. RESET operation resets Byte buffer and any allocations if present.
 7. DEFRAG is performed along with DEALLOC operation.
 
+![](doc/bufferStructure.PNG)
+![](doc/operations.PNG)
+
 # **Framework and Technologies used**
 
 1. RESTful services are developed in Spring a Java based web framework.
