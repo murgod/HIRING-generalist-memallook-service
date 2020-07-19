@@ -49,7 +49,7 @@ Buffer of Size 64 Bytes created
 # **ALLOC**
 
 ```
-curl --location --request POST 'localhost:8080/alloc' --header 'Content-Type: application/json' --data-raw '{ "mbytes" : 10 }'
+curl --location --request POST 'localhost:8080/memalloc/alloc' --header 'Content-Type: application/json' --data-raw '{ "mbytes" : 10 }'
 
 Note:
 M = mbytes
